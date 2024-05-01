@@ -4,15 +4,8 @@ title: About
 permalink: /about/
 ---
 
-This is the base Jekyll theme. You can find out more info about customizing your Jekyll theme, as well as basic Jekyll usage documentation at [jekyllrb.com](https://jekyllrb.com/)
+Welcome to yet another cyber blog! With only a short time in infosec, I'm using this page to aid my own education and document projects and CTF challenges I take on along the way. 
 
-You can find the source code for Minima at GitHub:
-[jekyll][jekyll-organization] /
-[minima](https://github.com/jekyll/minima)
+You'll get what you pay for here -- I don't pretend to be an expert, and I welcome any challenges to my methods. My primary goal is to deepen my understanding of information security concepts and practices, and to connect with like-minded professionals and enthusiasts also on the path. I welcome any and all critiques, connections, and communications.
 
-You can find the source code for Jekyll at GitHub:
-[jekyll][jekyll-organization] /
-[jekyll](https://github.com/jekyll/jekyll)
-
-
-[jekyll-organization]: https://github.com/jekyll
+Join me as I document my confusion and stumble towards knowledge, one challenge at a time!
