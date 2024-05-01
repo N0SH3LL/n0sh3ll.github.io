@@ -24,13 +24,22 @@ description: >- # this means to ignore newlines until "baseurl:"
   This blog is a learning resource for security projects and CTFs. Thanks for visiting!
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
-twitter_username: jekyllrb
-github_username:  N0SH3LL
+#linkedin_username: marshallbrown95  
+#github_username:  N0SH3LL
 
 # Build settings
-theme: minima
+remote_theme: jekyll/minima
 plugins:
-  - jekyll-feed
+#  - jekyll-feed
+  - jekyll-remote-theme
+
+minima:
+  skin: solarized
+
+  social_links:
+    - { platform: github,         user_url: "https://github.com/N0SH3LL" }
+    - { platform: linkedin,       user_url: "https://www.linkedin.com/in/marshallbrown95" }
+
 
 # Exclude from processing.
 # The following items will not be processed, by default.
