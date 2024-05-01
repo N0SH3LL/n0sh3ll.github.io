@@ -1,0 +1,9 @@
+---
+layout: post
+title:  "HTB: Usage Writeup"
+date:   2024-05-01 13:08:01 -0400
+categories: CTF
+---
+
+
+Usage starts with a web application vulnerable to SQL injection. After a thorough enumeration, I'll use sqlmap to get a database dump with some hashes. After cracking the hash of an web admin account, I'll use CVE-xxxx-xxxx to exploit a file upload vulnerability to get a reverse shell as www. For lateral movement, I'll explore some hidden files to find a user password. I'll then use a wildcard trick to leverage a custom binary to dump a root ssh key. 
