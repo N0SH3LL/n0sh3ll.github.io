@@ -33,6 +33,13 @@ plugins:
   - jekyll-feed
   - jekyll-remote-theme
 
+minima:
+  skin: solarized-dark
+
+  social_links:
+    - { platform: github,         user_url: "https://github.com/N0SH3LL" }
+    - { platform: linkedin,       user_url: "www.linkedin.com/in/marshallbrown95" }
+
 
 # Exclude from processing.
 # The following items will not be processed, by default.
