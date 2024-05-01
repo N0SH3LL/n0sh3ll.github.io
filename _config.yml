@@ -34,7 +34,7 @@ plugins:
   - jekyll-remote-theme
 
 minima:
-  skin: solarized
+  skin: auto
 
   social_links:
     - { platform: github,         user_url: "https://github.com/N0SH3LL" }
