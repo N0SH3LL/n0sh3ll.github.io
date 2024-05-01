@@ -28,9 +28,10 @@ linkedin_username: marshallbrown95
 github_username:  N0SH3LL
 
 # Build settings
-theme: minima
+remote_theme: jekyll/minima
 plugins:
   - jekyll-feed
+  - jekyll-remote-theme
 
 
 # Exclude from processing.
