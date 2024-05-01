@@ -18,8 +18,8 @@
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
 
-title: N0SH3LL Security
-email: undisclosed@github.com
+#title: N0SH3LL Security
+#email: undisclosed@github.com
 description: >- # this means to ignore newlines until "baseurl:"
   This blog is a learning resource for security projects and CTFs. Thanks for visiting!
 baseurl: "" # the subpath of your site, e.g. /blog
