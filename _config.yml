@@ -53,4 +53,4 @@ plugins:
 #   - vendor/ruby/
   # Generate social links in footer.
   #social_links:
-  #  - { platform: linkedin,       user_url: "https://www.linkedin.com/in/marshallbrown95/" }
+  #  - { platform: linkedin,       user_url: "www.linkedin.com/in/marshallbrown95" }
