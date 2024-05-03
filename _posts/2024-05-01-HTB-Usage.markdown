@@ -18,8 +18,9 @@ nmap -sC -sV 10.10.11.18
 
 Looks like we have ports open for ssh and http. It gives us the host name, so we can add this to /etc/hosts to access the page. This is pretty typical, but I like to set up a more detailed scan to run in the background while I check out the webpage. I'll try to run directory busting too, to cover my bases.
 
-`echo "10.10.11.18 usage.htb" | sudo tee -a /etc/hosts`
-
+{% highlight bash %}
+echo "10.10.11.18 usage.htb" | sudo tee -a /etc/hosts`
+{% endhighlight%}
 `tail /etc/hosts`
 
 `nmap -sC -sV -p- A usage.htb`
@@ -64,13 +65,19 @@ Firing up Burpsuite, I sent the request to the repeater, and spent some time loo
 
 Which breaks down into the following:
 
--r burp.txt: uses the http request saved as "burp.txt" (intercept in burpsuite, right click > save item)
--p 'email':target this parameter for SQLi. Has to be blank in the request apparently
---level=5: 1-5 level of testing to perform, 5 being most thorough
---risk=3: 1-3 level of risk, 3 being most intrusive
--v 7: max verbosity
---batch: skip user input
---dbs: enumerate databases
+`-r burp.txt`: uses the http request saved as "burp.txt" (intercept in burpsuite, right click > save item)
+
+`-p 'email'`:target this parameter for SQLi. Has to be blank in the request apparently
+
+`--level=5`: 1-5 level of testing to perform, 5 being most thorough
+
+`--risk=3`: 1-3 level of risk, 3 being most intrusive
+
+`-v 7`: max verbosity
+
+`--batch`: skip user input
+
+`--dbs`: enumerate databases
 
 And got 3 databases:
 
@@ -177,14 +184,21 @@ Finally, I get smart enough to run strings.
 
 With strings, I can see a little better how 7za is being used. Specifically: 
 
-/usr/bin/7za: calls executable
-a : add
-/var/backups/project.zip: add to this file
--tzip: type of archive, in this case, zip
--snl: store symbolic links as links, instead of storing the file the link points to 
--mmt: allows multiple threads
--- : end of command options. All strings after this are treated as arguments, not options
-* : wildcard to grab all files in the directory
+`/usr/bin/7za`: calls executable
+
+`a `: add
+
+`/var/backups/project.zip`: add to this file
+
+`-tzip`: type of archive, in this case, zip
+
+`-snl`: store symbolic links as links, instead of storing the file the link points to 
+
+`-mmt`: allows multiple threads
+
+`-- `: end of command options. All strings after this are treated as arguments, not options
+
+`*` : wildcard to grab all files in the directory
 
 I know wildcards are great for privesc attempts like this one, so after extensive googling I finaly got a couple good resources that explain a file read attack using 7z:
 https://0xdf.gitlab.io/2019/07/20/htb-ctf.html
