@@ -14,7 +14,7 @@ Enumeration
 As usual for an easy box, I set up a basic scan of the IP
 nmap -sC -sV 10.10.11.18
 
-![nmap results](/assets/images/usage1.png)
+![nmap results](/assets/images/usage/nmap results.png)
 
 Looks like we have ports open for ssh and http. It gives us the host name, so we can add this to /etc/hosts to access the page. This is pretty typical, but I like to set up a more detailed scan to run in the background while I check out the webpage. I'll try to run directory busting too, to cover my bases.
 
