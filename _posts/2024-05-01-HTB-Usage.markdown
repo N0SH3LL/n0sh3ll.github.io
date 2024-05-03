@@ -79,7 +79,7 @@ sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D us
 which yielded a nice hash for admin.
 
 ![nmap results](/assets/images/Usage/slqmap%20tables.png)
-![nmap results](/assets/images/Usage/sqlmap%20hash.png
+![nmap results](/assets/images/Usage/sqlmap%20hash.png)
 
 I then used https://hashes.com/en/tools/hash_identifier to identify the hash as bcrypt, and dropped it into a text file with vim. Hashcat gets put into work next and quickly yields admin:whatever1. Good ol' rockyou!
 
