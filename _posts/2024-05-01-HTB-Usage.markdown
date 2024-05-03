@@ -24,7 +24,7 @@ nmap -sC -sV -p- A usage.htb
 dirb http://usage.htb/ /usr/share/wordlists/dirb/common.txt
 dirb http://admin.usage.htb/ /usr/share/wordlists/dirb/common.txt
 
-[pic link] -dirb results base
+![nmap results](/assets/images/usage/'dirb results base.png')
 [pic link] -drib results admin
 
 While that's running, I can check out the web page. Landing page is a login form. There are also links to "Register" and "Admin". "Admin" gives us a subdomain that we can add. 
