@@ -12,23 +12,26 @@ Usage starts with a web application vulnerable to SQL injection. After a thoroug
 Enumeration
 
 As usual for an easy box, I set up a basic scan of the IP
-nmap -sC -sV 10.10.11.18
+
+{% highlight bash %}
+`nmap -sC -sV 10.10.11.18`
+{% endhighlight%}
 
 ![nmap results](/assets/images/Usage/nmap%20results.png)
 
 Looks like we have ports open for ssh and http. It gives us the host name, so we can add this to /etc/hosts to access the page. This is pretty typical, but I like to set up a more detailed scan to run in the background while I check out the webpage. I'll try to run directory busting too, to cover my bases.
 
 {% highlight bash %}
-echo "10.10.11.18 usage.htb" | sudo tee -a /etc/hosts`
+echo "10.10.11.18 usage.htb" | sudo tee -a /etc/hosts
+
+tail /etc/hosts
+
+nmap -sC -sV -p- A usage.htb
+
+dirb http://usage.htb/ /usr/share/wordlists/dirb/common.txt
+
+dirb http://admin.usage.htb/ /usr/share/wordlists/dirb/common.txt
 {% endhighlight%}
-`tail /etc/hosts`
-
-`nmap -sC -sV -p- A usage.htb`
-
-`dirb http://usage.htb/ /usr/share/wordlists/dirb/common.txt`
-
-`dirb http://admin.usage.htb/ /usr/share/wordlists/dirb/common.txt`
-
 
 ![nmap results](/assets/images/Usage/dir%20results%20base.png)
 ![nmap results](/assets/images/Usage/dirb%20results%20admin.png)
