@@ -6,7 +6,7 @@ categories: CTF
 ---
 
 
-Usage starts with a web application vulnerable to SQL injection. After a thorough enumeration, I'll use sqlmap to get a database dump with some hashes. After cracking the hash of an web admin account, I'll use CVE-xxxx-xxxx to exploit a file upload vulnerability to get a reverse shell as www. For lateral movement, I'll explore some hidden files to find a user password. I'll then use a wildcard trick to leverage a custom binary to dump a root ssh key. 
+Usage starts with a web application vulnerable to SQL injection. After a thorough enumeration, I'll use sqlmap to get a database dump with some hashes. After cracking the hash of a web admin account, I'll use CVE-xxxx-xxxx to exploit a file upload vulnerability to get a reverse shell as www. For lateral movement, I'll explore some hidden files to find a user password. I'll then use a wildcard trick to leverage a custom binary and dump a root ssh key. 
 
 
 ## Enumeration
@@ -52,11 +52,11 @@ Inspecting the admin page gives us version numbers for jQuery 2.1.4 and Bootstra
 ![screenshot](/assets/images/Usage/inspect%20results.png)
 ![screenshot](/assets/images/Usage/inspect%20cookie%20results.png)
 
-Since version numbers are always worth checking out, I spent some time googling the information I have so far. I found potential XSS and Prototype Pollution vulnerabilities for jQuery, but no public exploits. Bootstrap versions earlier than 3.4.1 also appear vulnerable to XSS, but it requires tooltip/popover elements. Larvel is a framework for web apps, and there are multiple vulnerabilites listed, but without the version number I can't tell which could be targets. However, I did note that Laravel is PHP based.
+Since version numbers are always worth checking out, I spent some time googling the information I have so far. I found potential XSS and Prototype Pollution vulnerabilities for jQuery, but no public exploits. Bootstrap versions earlier than 3.4.1 also appear vulnerable to XSS, but it requires tooltip/popover elements. Laravel is a framework for web apps, and there are multiple vulnerabilites listed, but without the version number I can't tell which could be targets. However, I did note that Laravel is PHP based.
 
 I've now got a list of vulnerabilites I could start researching, but I'm going to finish enumerating first to keep from falling down any rabbit holes. 
 
-I try Laravel default credentials for the admin page with no luck. However, registering for the site actually works, and shows me four blog posts with a little HTB hint about Server Side Penetration testing and another pointer towards Laravel using PHP. Unfortunately, theres no additional access, and my registered credentials don't work on the admin page. 
+I try Laravel default credentials for the admin page with no luck. However, registering for the site actually works, and shows me four blog posts with a little HTB hint about Server Side Penetration testing and another pointer towards Laravel using PHP. Unfortunately, there's no additional access, and my registered credentials don't work on the admin page. 
 
 ![screenshot](/assets/images/Usage/blog%20posts.png)
 
@@ -189,7 +189,7 @@ ssh xander@10.10.11.18
 
 ![screenshot](/assets/images/Usage/xander%20ssh%20access.png)
 
-## Privelege Escalation: Binary Exploitation
+## Privilege Escalation: Binary Exploitation
 
 And now I can start down my privilege escalation checklist. Almost immediately I find something interesting. 
 
