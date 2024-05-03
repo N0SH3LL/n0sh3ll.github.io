@@ -9,7 +9,7 @@ categories: CTF
 Usage starts with a web application vulnerable to SQL injection. After a thorough enumeration, I'll use sqlmap to get a database dump with some hashes. After cracking the hash of an web admin account, I'll use CVE-xxxx-xxxx to exploit a file upload vulnerability to get a reverse shell as www. For lateral movement, I'll explore some hidden files to find a user password. I'll then use a wildcard trick to leverage a custom binary to dump a root ssh key. 
 
 
-Enumeration
+## Enumeration
 
 As usual for an easy box, I set up a basic scan of the IP
 
@@ -63,6 +63,8 @@ I try Laravel default credentials for the admin page with no luck. However, regi
 At this point I circle back to my running searches. Nmap didn't return anything new, but the dirb search on admin.usage gave us /uploads, with a /images subdirectory as well as /vendor. Unfortunately I get a 403 when I try to access either of these. 
 
 XSRF seems unlikely because there are tokens in place. I try some XSS checks as well, but none of the forms reflect any outputs, so that seems to be a no-go as well. I finally get something interesting while I'm checking for SQL injection possibilities (from this list: https://book.hacktricks.xyz/pentesting-web/sql-injection) using the ' character on the password reset page returns "500 SERVER ERROR", which indicates it might be injectable.
+
+## Foothold: SQLi for admin credentials
 
 Firing up Burpsuite, I sent the request to the repeater, and spent some time looking through the response without gaining any additional insight. After multiple attempts, I finally got this command put together: 
 
@@ -118,6 +120,8 @@ hashcat -m 3200 -a 0 adminhash.txt /usr/share/wordlists/rockyou.txt.gz
 
 Worth trying over ssh, but no dice. The admin page works though, and takes us to the dashboard. The dashboard immediately gives some information, including the version of laravel I was missing earlier- 10.18.0.
 
+## User: CVE-2023-24249
+
 I spent some time playing around with the other pages, trying to add a new user, change paths in the permission section, messing with the search field, all to no avail. I finally circled back to the laravel version number and found CVE-2023-24249 along with a proof of concept here:
 https://flyd.uk/post/cve-2023-24249/. 
 
@@ -160,6 +164,8 @@ python3 --version
 python3 -c 'import pty;pty.spawn("/bin/bash")'
 {% endhighlight%}
 
+## Lateral Movement: Hidden Files
+
 This was my least favorite part. I spent a decent amount of time looking around the box, trying to find something useful. I can see another user, "xander", but can't access their directory. I found plaintext database credentials in /var/www/html/project_admin/.env
 
 ![screenshot](/assets/images/Usage/db%20pass.png)
@@ -182,6 +188,8 @@ ssh xander@10.10.11.18
 {% endhighlight%}
 
 ![screenshot](/assets/images/Usage/xander%20ssh%20access.png)
+
+## Privelege Escalation: Binary Exploitation
 
 And now I can start down my privilege escalation checklist. Almost immediately I find something interesting. 
 
@@ -264,6 +272,8 @@ ssh -i sshkey.pem root@10.10.11.18
 and we have root!
 
 ![screenshot](/assets/images/Usage/root.png)
+
+## Extra Credit: 7zip wildcards and box cleanup script
 
 I spent a little while enjoying my root privileges by exploring the privesc exploit. Despite what hacktricks says about the importance of the options, I was able to get the error for the file leak without any of the command options. It appears the wildcard enabling the reading of "@file" was enough, suggesting this exploit might be viable in a wider set of circumstances than I originally thought. A good trick to keep in the back pocket!
 
