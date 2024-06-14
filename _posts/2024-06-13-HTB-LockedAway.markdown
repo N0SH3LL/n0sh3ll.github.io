@@ -15,9 +15,18 @@ A test! Getting onto the team is one thing, but you must prove your skills to be
 
 ## Enumeration
 
-Visiting the IP given to us shows us some ASCII art and some text. There isn't any javascript being run on the page, and there isn't a way to pass commands directly throught the webpage, so we have to look at the files given as part of the challenge. We've got a dockerfile, a build script for the file, and a python file.
+Visiting the IP given to us shows us some ASCII art and some text. There isn't any javascript being run on the page, and there isn't a way to pass commands directly throught the webpage, so we have to look at the files given as part of the challenge. 
+
+![image](https://github.com/N0SH3LL/n0sh3ll.github.io/assets/107323047/6317aa00-9e40-41c2-9c1f-541bc418fa98)
+
+We've got a dockerfile, a build script for the file, and a python file.
+
+![image](https://github.com/N0SH3LL/n0sh3ll.github.io/assets/107323047/7ccbe44a-287d-4225-a306-5fd85f2da9e5)
+![image](https://github.com/N0SH3LL/n0sh3ll.github.io/assets/107323047/6baf9a80-158d-4ac3-a540-59ff6e6ae627)
 
 Inside the dockerfile we see the challenge being set up. 
+
+![image](https://github.com/N0SH3LL/n0sh3ll.github.io/assets/107323047/237f7e49-b1f3-47e4-93a8-c1faabbe89c9)
 
 {% highlight bash %}
 ADD --chown=ctf challenge/* /home/ctf/
@@ -27,7 +36,9 @@ ADD --chown=ctf challenge/* /home/ctf/
 ENTRYPOINT ["socat", "TCP-LISTEN:1337,fork,reuseaddr", "EXEC:'python3 main.py'"]
 {% endhighlight%}
 
-Tells us that the the challenge folder is added to the container, and the main.py is executed. 
+Tells us that the the challenge folder is added to the container, and that main.py is executed. 
+
+![image](https://github.com/N0SH3LL/n0sh3ll.github.io/assets/107323047/1be6357b-ef97-4262-9bd2-a542471a676d)
 
 Main.py looks awfully familiar. It's got the same banner and printed message as the web page. I think its safe to assume at this point that the box is running the docker container and python file we were given. The logic in the file is fairly straightforward: There is one function that accepts an input, checks for any values in the blacklist, and either blocks or executes the command. There is also an uncalled function at the top that opens flag.txt. So we have to pass a command that does not trigger the blacklist, but still either triggers open_chest, or lets us read flag.txt. 
 
@@ -62,21 +73,7 @@ https://www.kdnuggets.com/2023/03/introduction-getitem-magic-method-python.html
 
 The syntax for the __getitem__ method is as follows:
 
-{% highlight bash %}
-def __getitem__(self, index):
-	# Your Implementation
-	pass
-{% endhighlight%}
- 
-
-It defines the behavior of the function and takes the index that you are trying to access in its parameter. We can use this method like this:
-
-{% highlight bash %}
-my_obj[index] 
-{% endhighlight%}
- 
-
-This translates to the statement my_obj.__getitem__(index) under the hood. Now you might think that how is it different from the built-in indexer [] operator? Wherever you use this notation, python automatically calls the __getitem__ method for you and is the shorthand for accessing elements. But if you want to change the behavior of indexing for custom objects, you need to explicitly call the __getitem__ method.
+![image](https://github.com/N0SH3LL/n0sh3ll.github.io/assets/107323047/31de20e7-23c3-4bd8-b33b-3386dac5d780)
 
 
 So, I would expect blacklist.__getitem__(1) to return "import", so we've gotten past some of the bracket issues. 
@@ -91,21 +88,27 @@ Brilliant right? I even remembered python starts counting from 0.
 .....Except dir is on the list too. 
 Hopefully this means we are on the right track though. 
 
-Some further searches told me that var() is similar, and printing it gives us the following when modify and run the python file we have: 
+Some further searches told me that var() is similar, and printing it gives us the following if we modify and run the python file we have: 
 
 ![image](https://github.com/N0SH3LL/n0sh3ll.github.io/assets/107323047/a56c7a62-d54b-4bf2-8ab0-fe219fa0760e)
 
-And we can see the function we need. 
+And we can see the function we need as part of a key pair. 
 So now we need to use the key open_chest and call the function. 
 
 print(vars().__getitem__(open_chest)()) successfully uses the key and returns us the function, but of course triggers the blacklist. I tried multiple ways to get it by position, but to no avail. So we need an alternate way to construct the key so that getitem accepts it. We still can't decode, but the time I initally spent trying to obscure commands earlier paid off. Python has the chr(number) function, which represents an ASCII character, based on the number passed to it. 
 
+![image](https://github.com/N0SH3LL/n0sh3ll.github.io/assets/107323047/2e02e75c-2bb6-4382-92d7-822276d1ba63)
+
 So, I need to translate open_chest to these values, concatenate, and hope it works. 
 
 {% highlight bash %}
-chr(111)+chr(112)+chr(101)+chr(110)+chr(95)+chr(99)+chr(104)+chr(101)+chr(115)+chr(116))()
+vars().__getitem__(chr(111)+chr(112)+chr(101)+chr(110)+chr(95)+chr(99)+chr(104)+chr(101)+chr(115)+chr(116))()
+
+![image](https://github.com/N0SH3LL/n0sh3ll.github.io/assets/107323047/dbedba9b-bbf1-40ca-b223-f5f0e9df61eb)
+
 {% endhighlight%}
 
 And we have liftoff. 
 
-![screenshot](/assets/images/Usage/nmap%20results.png)
+![image](https://github.com/N0SH3LL/n0sh3ll.github.io/assets/107323047/ba4e1344-1320-42d1-b27d-26f0dc226f2c)
+
