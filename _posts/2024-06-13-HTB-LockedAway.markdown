@@ -105,8 +105,6 @@ So, I need to translate open_chest to these values, concatenate, and hope it wor
 vars().__getitem__(chr(111)+chr(112)+chr(101)+chr(110)+chr(95)+chr(99)+chr(104)+chr(101)+chr(115)+chr(116))()
 {% endhighlight%}
 
-![image](https://github.com/N0SH3LL/n0sh3ll.github.io/assets/107323047/dbedba9b-bbf1-40ca-b223-f5f0e9df61eb)
-
 And we have liftoff. 
 
 ![image](https://github.com/N0SH3LL/n0sh3ll.github.io/assets/107323047/ba4e1344-1320-42d1-b27d-26f0dc226f2c)
