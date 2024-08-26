@@ -2,7 +2,7 @@
 layout: post
 title:  "HTB: Locked Away Challenge"
 date:   2024-06-13 13:08:01 -0400
-categories: CTF
+categories: Challenge
 ---
 
 
