@@ -23,6 +23,6 @@ And print the results
 ![image](https://github.com/user-attachments/assets/a9117a37-df0e-483f-9b01-0f4d23b11831)
 
 Before formatting as requested, and shooting over via nc
-echo "Jayson Enderby - 98, Malva Shreeve - 96, Randolf Raybould - 96, Shay Sheardown - 95, Koo Rue - 94, Tabina Nathon - 94, Taber Haile - 93, Constanta Rolfs - 93, Corette Bursnell - 93, Gerri Bielfelt - 92, Andy Swane - 91, Colene Vanyatin - 91, Lowe Farnan - 91, Ashlin Neely - 91" | nc 83.136.255.40 34340
-and boom
+{% highlight bash %} echo "Jayson Enderby - 98, Malva Shreeve - 96, Randolf Raybould - 96, Shay Sheardown - 95, Koo Rue - 94, Tabina Nathon - 94, Taber Haile - 93, Constanta Rolfs - 93, Corette Bursnell - 93, Gerri Bielfelt - 92, Andy Swane - 91, Colene Vanyatin - 91, Lowe Farnan - 91, Ashlin Neely - 91" | nc 83.136.255.40 34340 {% endhighlight%}
+and boom.
 ![image](https://github.com/user-attachments/assets/ca787e96-5a51-4337-8fc1-66e6757ea2e9)
