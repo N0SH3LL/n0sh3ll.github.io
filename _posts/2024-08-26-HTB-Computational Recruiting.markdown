@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "HTB: Computational Recruiting Challenge"
-date:   2024-08/26 
+date:   2024-08/26 13:08:01 -0400
 categories: Challenge
 ---
 
