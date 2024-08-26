@@ -1,8 +1,8 @@
 ---
 layout: post
 title:  "HTB: Computational Recruiting Challenge"
-date:   2024-08/26 13:08:01 -0400
-categories: Challenge
+date:   2024-08-26 13:08:01 -0400
+categories: CTF
 ---
 
 Computational Recruiting is a "very easy" challenge on Hack the Box that focuses on solving a problem with python. We are given a dataset that we need to apply a formula to, and then sort. Nothing too crazy.
