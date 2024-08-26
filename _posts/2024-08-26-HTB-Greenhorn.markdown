@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "HTB: Greenhorn Writeup"
-date:   2024-05-01 13:08:01 -0400
+date:   2024-08-26 13:08:01 -0400
 categories: CTF
 ---
 
