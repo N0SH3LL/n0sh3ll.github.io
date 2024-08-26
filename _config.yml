@@ -22,9 +22,8 @@ title: N0SH3LL Security
 email: undisclosed@github.com
 description: >- # this means to ignore newlines until "baseurl:"
   This blog is a learning resource for security projects and CTFs. Thanks for visiting!
-domain: n0sh3ll.github.io
-baseurl: "/n0sh3ll.github.io/" # the subpath of your site, e.g. /blog
-url: "https://n0sh3ll.github.io" # the base hostname & protocol for your site, e.g. http://example.com
+baseurl: "" # the subpath of your site, e.g. /blog
+url: "" # the base hostname & protocol for your site, e.g. http://example.com
 #linkedin_username: marshallbrown95  
 #github_username:  N0SH3LL
 
